@@ -8,10 +8,11 @@ local debug_output = io.open("output.txt", "w+")
 
 _G.colors = require("ansicolors") --thx
 --_G.print = function(str) debug_output:write(tostring(str).."\n") end
+_G.print = function() end
 
 local system
-local bootrom = io.open("sgb2_boot.bin", "r")
-local rom = io.open("test-roms/mooneye-test-suite/manual-only/sprite_priority.gb", "r")
+local bootrom = love.filesystem.newFile("bootrom-intact.gb", "r")
+local rom = love.filesystem.newFile("test-roms/mooneye-test-suite/manual-only/sprite_priority.gb", "r")
 local imgui = require("imgui")
 
 function love.load()
@@ -26,7 +27,7 @@ end
 local cpuClocks = 0
 local ppuClocks = 0
 local clock = 1
-local update = false
+local update = true
 function love.update(dt)
     clock = (4100000 * (1/60))/4
     if update then
@@ -48,7 +49,7 @@ function love.update(dt)
         end
     end
 
-    imgui.NewFrame()
+    imgui.NewFrame(dt)
 end
 
 local showHexEditor = false
@@ -64,7 +65,7 @@ function love.draw()
             love.graphics.points((x*3)+100, (y*3)+100)
         end
     end
-    love.graphics.setColor(1,1,1)
+    love.graphics.setColor(1,1,1,1)
 
     if imgui.BeginMainMenuBar() then
         if imgui.Button("Hex Editor") then
@@ -151,6 +152,8 @@ function love.draw()
     end
     --imgui.Text(tostring("Z: "..tostring(system.cpu.registers.zero)).."\nS:"..tostring(system.cpu.registers.subtract).."\nC: "..tostring(system.cpu.registers.carry).."\nHC: "..tostring(system.cpu.registers.half_carry))
     imgui.End()
+
+    love.graphics.print("pc: 0x"..bit.tohex(system.cpu.registers.pc, 4))
 
     scrollWheel = 0
     imgui.Render()

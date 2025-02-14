@@ -14,21 +14,21 @@ function ramMod.init(bootrom, rom)
     local ram = {}
     ram.mem = {}
     for i = 0, 0x00ff do --first 256 bytes are bootrom
-        bootrom:seek("set", i)
+        bootrom:seek(i)
         ram.mem[i] = {}
         ram.mem[i][1] = bootrom:read(1):byte() or 0xff --data
         ram.mem[i][2] = false                       --write access
     end
 
     for i = 0x0100, 0x3fff do --read-only rom bank, cannot be switched
-        rom:seek("set", i)
+        rom:seek(i)
         ram.mem[i] = {}
         ram.mem[i][1] = rom:read(1):byte() or 0xff
         ram.mem[i][2] = false
     end
 
     for i = 0x4000, 0x7fff do --r/w rom bank, can be switched
-        rom:seek("set", i)
+        rom:seek(i)
         ram.mem[i] = {}
         ram.mem[i][1] = rom:read(1):byte() or 0xff
         ram.mem[i][2] = true

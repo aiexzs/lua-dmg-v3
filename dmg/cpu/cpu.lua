@@ -227,7 +227,7 @@ function cpu.execute_next(self)
         print('executing: '..tohex(opcode,2):upper().." @ 0x"..tohex(self.registers.pc, 4).." | "..labels[opcodestr].mnemonic.." "..(labels[opcodestr].operand1 or "")..", "..(labels[opcodestr].operand2 or ""))
         instructions[opcode](self)
     else
-        io.write(colors('%{redbg}error: cannot find instruction '..tohex(opcode,2):upper().." at 0x"..tohex(self.registers.pc, 4)))
+        print(colors('%{redbg}error: cannot find instruction '..tohex(opcode,2):upper().." at 0x"..tohex(self.registers.pc, 4)))
     end
 end
 
