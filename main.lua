@@ -1,3 +1,4 @@
+local ffi = require "ffi"
 if os.getenv("LOCAL_LUA_DEBUGGER_VSCODE") == "1" then
     require("lldebugger").start()
 end
@@ -13,11 +14,14 @@ _G.print = function() end
 local system
 local bootrom = love.filesystem.newFile("bootrom-intact.gb", "r")
 local rom = love.filesystem.newFile("test-roms/mooneye-test-suite/manual-only/sprite_priority.gb", "r")
-local imgui = require("imgui")
+local imgui = require("cimgui")
 
 function love.load()
     system = require("dmg.system").init(bootrom, rom)
     love.graphics.setPointSize(3)
+
+    imgui.love.Init()
+    
 end
 
 local function clamp(x, min, max)
@@ -49,12 +53,18 @@ function love.update(dt)
         end
     end
 
-    imgui.NewFrame(dt)
+    imgui.love.Update(dt)
+    imgui.NewFrame()
 end
 
 local showHexEditor = false
 local hexEditorScroll = 0
 local scrollWheel = 0
+
+local val = ffi.new("float[1]")
+local fart = {255, 255, 255, 255, 255, 255, 255, 255}
+
+
 function love.draw()
     --screen
     for x = 1, 160 do
@@ -67,100 +77,37 @@ function love.draw()
     end
     love.graphics.setColor(1,1,1,1)
 
-    if imgui.BeginMainMenuBar() then
-        if imgui.Button("Hex Editor") then
-            showHexEditor = not showHexEditor
-        end
-        imgui.EndMainMenuBar()
-    end
-
-    -- imgui ram viewer
-    if showHexEditor then
-        imgui.SetNextWindowSize(650, 425)
-        imgui.Begin("   0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F") -- guh,,,,
-
-        local flooredScroll = math.floor(hexEditorScroll)
-        local scrollStepped = bit.band(flooredScroll, 0xFFF0)
-
-        for i = scrollStepped, scrollStepped+(0x0010*19), 0x0010 do --loop for 19 rows following the initial scroll value
-            i = i % 0xffff
-            local line = tostring(bit.tohex(i,4))
-            local bytes = {}
-            for l = 0x00, 0x0F do
-                local index = i+l+math.floor(i/0xfff0)
-                local value = system.cpu.ram[index]
-                bytes[l] = value
-                line = line.." "..bit.tohex(value, 2)
-            end
-            
-            line = line.." |"
-
-            for c = 1, #bytes do
-                local char = bytes[c]
-                line = line.." "..((string.match(string.char(bytes[c]), "%g") ~= nil) and string.char((bytes[c])) or ".")
-            end
-            imgui.TextUnformatted(line)
-        end
-
-        hexEditorScroll = clamp(hexEditorScroll + (imgui.SliderFloat("Scroll", 0, -10, 10)*0x0010), 0, 0xffff)
-
-        if imgui.IsWindowHovered() then
-            if scrollWheel ~= 0 then
-                hexEditorScroll = hexEditorScroll + -scrollWheel*0x10
-            end
-        end
-
-        local scrstr, isnew = imgui.InputText("Scroll to", bit.tohex(flooredScroll,4), 5)
-
-        if isnew then
-            scrstr = scrstr or "ffff"
-            hexEditorScroll = (tonumber(scrstr, 16) or 0) % 0xffff
-        end
-
-        imgui.End()
-    end
-
-    --imgui debug shit
-    imgui.SetNextWindowSize(500, 400)
-    imgui.Begin("Debug")
-    clock = imgui.InputInt("Clock", clock)
-    update = imgui.Checkbox("Update", update)
-    --updateppu = imgui.Checkbox("Update cpu.ppu", updateppu)
-    --rate = imgui.InputInt(tostring("Rate (Hz), actual: "..totalCycles), rate)
-    if imgui.Button("Step") then
-        system.cpu:tick()
-    end
-    if imgui.Button("Reset") then
-        update = false
-        system.cpu = nil
-        system.ram = nil
-        system = nil
-        system = require("dmg.system").init(bootrom, rom)
-        system.cpu.registers.pc = 0
-        local regs = {'a', 'b', 'c', 'd', 'e', 'f', 'h', 'l'}
-        for i,v in pairs(regs) do
-            system.cpu.registers[v] = 0
-        end
-    end
-    imgui.Text(tostring("FPS: "..love.timer.getFPS().."\nA:"..bit.tohex(system.cpu.registers.a, 2).." \nB:"..bit.tohex(system.cpu.registers.b, 2).." \nC:"..bit.tohex(system.cpu.registers.c, 2).." \nD:"..bit.tohex(system.cpu.registers.d, 2).." \nE:"..bit.tohex(system.cpu.registers.e, 2).." \nF:"..bit.tohex(system.cpu.registers.f, 2).." \nH:"..bit.tohex(system.cpu.registers.h, 2).." \nL:"..bit.tohex(system.cpu.registers.l, 2).." \nSP: "..bit.tohex(system.cpu.registers.sp,4).." \nPC: "..bit.tohex(system.cpu.registers.pc+1, 6).."\nscy: "..tostring(system.ram[0xff42]).."\nscx: "..tostring(system.ram[0xff43])))
-    for i,v in pairs({'z', 'n', 'hc', 'c'}) do
-        local value = tostring(system.cpu.registers:get_flag(v) and 1 or 0)
-        imgui.Text("flag "..v..": "..value)
-    end
-    if imgui.Button("+ PC") then
-        system.cpu.registers.pc = system.cpu.registers.pc + 1
-    end
-    --imgui.Text(tostring("Z: "..tostring(system.cpu.registers.zero)).."\nS:"..tostring(system.cpu.registers.subtract).."\nC: "..tostring(system.cpu.registers.carry).."\nHC: "..tostring(system.cpu.registers.half_carry))
-    imgui.End()
-
     love.graphics.print("pc: 0x"..bit.tohex(system.cpu.registers.pc, 4))
 
+    imgui.Begin("test")
+
+    
+    imgui.SliderFloat("hi", val, 0.0, 10.0)
+    for i,v in pairs(fart) do
+        local strbuf = ffi.new("char[2]")
+        ffi.copy(strbuf, bit.tohex(v, 2), 2)
+        imgui.SetNextItemWidth(50)
+        imgui.PushID_Int(i^2)
+        if imgui.InputText(" ", strbuf, 3, bit.bor(imgui.ImGuiInputTextFlags_CharsUppercase, imgui.ImGuiInputTextFlags_CharsHexadecimal, imgui.ImGuiInputTextFlags_EnterReturnsTrue)) then
+            v = tonumber(ffi.string(strbuf, 2), 16)
+        end
+        imgui.PopID()
+        imgui.SameLine()
+    end
+
+
+    
+    imgui.End()
+
+
     scrollWheel = 0
+
     imgui.Render()
+    imgui.love.RenderDrawLists()
 end
 
 function love.quit()
-    imgui.ShutDown()
+    imgui.love.Shutdown()
 end
 
 
@@ -168,51 +115,51 @@ end
 -- User inputs (imgui hooks)
 --
 function love.textinput(t)
-    imgui.TextInput(t)
-    if not imgui.GetWantCaptureKeyboard() then
+    imgui.love.TextInput(t)
+    if not imgui.love.GetWantCaptureKeyboard() then
         -- Pass event to the game
     end
 end
 
 function love.keypressed(key)
-    imgui.KeyPressed(key)
-    if not imgui.GetWantCaptureKeyboard() then
+    imgui.love.KeyPressed(key)
+    if not imgui.love.GetWantCaptureKeyboard() then
         -- Pass event to the game
     end
 end
 
 function love.keyreleased(key)
-    imgui.KeyReleased(key)
-    if not imgui.GetWantCaptureKeyboard() then
+    imgui.love.KeyReleased(key)
+    if not imgui.love.GetWantCaptureKeyboard() then
         -- Pass event to the game
     end
 end
 
 function love.mousemoved(x, y)
-    imgui.MouseMoved(x, y)
-    if not imgui.GetWantCaptureMouse() then
+    imgui.love.MouseMoved(x, y)
+    if not imgui.love.GetWantCaptureMouse() then
         -- Pass event to the game
     end
 end
 
 function love.mousepressed(x, y, button)
-    imgui.MousePressed(button)
-    if not imgui.GetWantCaptureMouse() then
+    imgui.love.MousePressed(button)
+    if not imgui.love.GetWantCaptureMouse() then
         -- Pass event to the game
     end
 end
 
 function love.mousereleased(x, y, button)
-    imgui.MouseReleased(button)
-    if not imgui.GetWantCaptureMouse() then
+    imgui.love.MouseReleased(button)
+    if not imgui.love.GetWantCaptureMouse() then
         -- Pass event to the game
     end
 end
 
 function love.wheelmoved(x, y)
     scrollWheel = scrollWheel + y
-    imgui.WheelMoved(y)
-    if not imgui.GetWantCaptureMouse() then
+    imgui.love.WheelMoved(x, y)
+    if not imgui.love.GetWantCaptureMouse() then
         -- Pass event to the game
     end
 end

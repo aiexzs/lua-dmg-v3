@@ -31,7 +31,7 @@
               "command": "love"
             },
             "args": [
-              "."
+              "${workspaceFolder}"
             ],
             "scriptRoots": [
               "."
