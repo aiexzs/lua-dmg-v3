@@ -20,6 +20,9 @@ function love.load()
     system = require("dmg.system").init(bootrom, rom)
     love.graphics.setPointSize(3)
 
+    local pixelScale = love.window.getDPIScale()
+    love.window.setMode(800*2, 600*2)
+
     imgui.love.Init()
     
 end
@@ -59,10 +62,10 @@ end
 
 local showHexEditor = false
 local hexEditorScroll = 0
-local scrollWheel = 0
+local scrollWheel = ffi.new("int[4]", {0})
 
 local val = ffi.new("float[1]")
-local fart = {255, 255, 255, 255, 255, 255, 255, 255}
+local values = {255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255}
 
 
 function love.draw()
@@ -79,28 +82,61 @@ function love.draw()
 
     love.graphics.print("pc: 0x"..bit.tohex(system.cpu.registers.pc, 4))
 
-    imgui.Begin("test")
+    imgui.Begin("Hex Editor")
 
-    
-    imgui.SliderFloat("hi", val, 0.0, 10.0)
-    for i,v in pairs(fart) do
-        local strbuf = ffi.new("char[2]")
-        ffi.copy(strbuf, bit.tohex(v, 2), 2)
-        imgui.SetNextItemWidth(50)
-        imgui.PushID_Int(i^2)
-        if imgui.InputText(" ", strbuf, 3, bit.bor(imgui.ImGuiInputTextFlags_CharsUppercase, imgui.ImGuiInputTextFlags_CharsHexadecimal, imgui.ImGuiInputTextFlags_EnterReturnsTrue)) then
-            v = tonumber(ffi.string(strbuf, 2), 16)
+    imgui.PushStyleVar_Vec2(imgui.ImGuiStyleVar_ItemSpacing, imgui.ImVec2_Float(-10, 1)) -- set padding to make a grid
+    imgui.PushStyleVar_Vec2(imgui.ImGuiStyleVar_FramePadding, imgui.ImVec2_Float(2, 2))
+
+    for rows = 0, 15 do
+        imgui.TextUnformatted(bit.tohex(hexEditorScroll+(0x10*rows), 4))
+        imgui.SameLine(0, 0)
+
+        for cols = 0, 15 do --hex section
+            local currentPos = bit.band(hexEditorScroll, 0xFFF0) + ((rows*16)+cols)
+        
+            local strbuf = ffi.new("char[3]") -- 2 bytes for 2 hex characters and a third for the terminator otherwise you get garbage data
+            ffi.copy(strbuf, bit.tohex(system.ram[currentPos], 2), 2) --copy the value (converted to string) from ram to our string buffer
+
+            imgui.SetNextItemWidth(18)
+            imgui.PushID_Int(currentPos)
+            if imgui.InputText(" ", strbuf, 3, bit.bor(imgui.ImGuiInputTextFlags_CharsUppercase, imgui.ImGuiInputTextFlags_CharsHexadecimal, imgui.ImGuiInputTextFlags_EnterReturnsTrue)) then
+                system.ram[currentPos] = tonumber(ffi.string(strbuf, 2), 16) -- when user presses enter, set the byte at the address [[TODO]] make it work
+            end
+
+            imgui.PopID()
+            imgui.SameLine()
         end
-        imgui.PopID()
-        imgui.SameLine()
+        
+        local line = "|"
+        for i = 1, 16 do -- utf8 generator for this row
+            local char = string.char(system.ram[(hexEditorScroll+rows*16)+i])
+            local newchar = string.match(char, "[%p%a%d%s]") and char or "." --use only punctuation, letters, space because non-ASCII characters have weird spacing sometimes
+            line = line..""..newchar
+        end
+        imgui.TextUnformatted(line)
+
+        --imgui.NewLine()
     end
 
+    imgui.PopStyleVar(2)
 
+    --scroll wheel behavior
+    imgui.SliderInt('Scroll', scrollWheel, -4, 4)
     
-    imgui.End()
+    if imgui.IsWindowHovered() then
+        hexEditorScroll = hexEditorScroll + (scrollWheel[0] * (0x10))
+    end
+    scrollWheel[0] = 0
 
+    --jump to address
+    local jumpBuf = ffi.new("char[5]")
+    ffi.copy(jumpBuf, bit.tohex(hexEditorScroll, 4))
+    if imgui.InputText("Jump to Address", jumpBuf, 5, bit.bor(imgui.ImGuiInputTextFlags_CharsUppercase, imgui.ImGuiInputTextFlags_CharsHexadecimal, imgui.ImGuiInputTextFlags_EnterReturnsTrue)) then
+        hexEditorScroll = tonumber(ffi.string(jumpBuf, 4), 16)
+    end
 
-    scrollWheel = 0
+    imgui.End() --HEX EDITOR END
+
 
     imgui.Render()
     imgui.love.RenderDrawLists()
@@ -157,9 +193,8 @@ function love.mousereleased(x, y, button)
 end
 
 function love.wheelmoved(x, y)
-    scrollWheel = scrollWheel + y
     imgui.love.WheelMoved(x, y)
+    scrollWheel[0] = scrollWheel[0] - y
     if not imgui.love.GetWantCaptureMouse() then
-        -- Pass event to the game
     end
 end
