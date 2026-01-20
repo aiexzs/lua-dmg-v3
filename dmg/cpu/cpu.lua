@@ -144,6 +144,7 @@ function cpu.init(system)
     print(missing_instrs)
     cpu.ram = system.ram
     cpu.cycles = 0
+    cpu.message = ""
     return cpu
 end
 
@@ -237,6 +238,10 @@ function cpu.tick(self)
         self.cycles = 4
     else
         self.cycles = self.cycles - 1
+    end
+
+    if self.registers.pc == 0x100 then --check if bootrom is finished
+        self.ram:entry()
     end
 end
 

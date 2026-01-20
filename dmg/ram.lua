@@ -13,11 +13,14 @@ function ramMod.init(bootrom, rom)
     rom = rom and rom or fileStub
     local ram = {}
     ram.mem = {}
+    ram.bypass = false
+    ram.rom = rom
+
     for i = 0, 0x00ff do --first 256 bytes are bootrom
         bootrom:seek(i)
         ram.mem[i] = {}
         ram.mem[i][1] = bootrom:read(1):byte() or 0xff --data
-        ram.mem[i][2] = false                       --write access
+        ram.mem[i][2] = false                          --write access
     end
 
     for i = 0x0100, 0x3fff do --read-only rom bank, cannot be switched
@@ -36,7 +39,7 @@ function ramMod.init(bootrom, rom)
 
     for i = 0x8000, 0xffff do --everything else, i don't really care about the unused/unmapped areas for now (TODO because it's used for copy protection in some instances)
         ram.mem[i] = {}
-        ram.mem[i][1] = 0x00--math.random(255)
+        ram.mem[i][1] = 0x00
         ram.mem[i][2] = true
     end
 
@@ -51,13 +54,22 @@ function ramMod.init(bootrom, rom)
         key = key % 0xffff
         if table.mem[key] then --check nil (this should never == false)
             if val then
-                if table.mem[key][2] then --can i write to this address?
+                if table.mem[key][2] or ram.bypass then --can i write to this address? am i bypassing the restriction?
                     table.mem[key][1] = val % 256 --between 0x00 and 0xff
                     --print("wrote "..bit.tohex(key,4)..": "..bit.tohex(val,2))
                 else
                     print("illegal write @ 0x"..bit.tohex(key,4)..", could not write "..bit.tohex(val,2)) --doodie fart
                 end
             end
+        end
+    end
+
+    ram.entry = function(self)
+        for i = 0, 0x00ff do --first 256 bytes are overlayed by bootrom, but we are removing that overlay so the ROM can access its first 256 bytes
+            self.rom:seek(i)
+            ram.mem[i] = {}
+            ram.mem[i][1] = self.rom:read(1):byte() or 0xff --data
+            ram.mem[i][2] = false                           --write access
         end
     end
 

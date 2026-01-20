@@ -1,7 +1,7 @@
 local system = {}
 
 function system.reset(self) --cheap bad
-    local new = self.init(self.rom, self.bootrom)
+    local new = system.init(self.rom, self.bootrom)
     return new
 end
 

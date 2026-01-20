@@ -9,11 +9,14 @@ local debug_output = io.open("output.txt", "w+")
 
 _G.colors = require("ansicolors") --thx
 --_G.print = function(str) debug_output:write(tostring(str).."\n") end
-_G.print = function() end
+--_G.print = function() end
+
+local last_print = ""
+_G.print = function(str) last_print = tostring(str) end 
 
 local system
-local bootrom = love.filesystem.newFile("bootrom-intact.gb", "r")
-local rom = love.filesystem.newFile("test-roms/mooneye-test-suite/manual-only/sprite_priority.gb", "r")
+local bootrom = love.filesystem.newFile("dmg_boot.bin", "r")
+local rom = love.filesystem.newFile("Tetris.gb", "r")
 local imgui = require("cimgui")
 
 function love.load()
@@ -64,10 +67,6 @@ local showHexEditor = false
 local hexEditorScroll = 0
 local scrollWheel = ffi.new("int[4]", {0})
 
-local val = ffi.new("float[1]")
-local values = {255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255}
-
-
 function love.draw()
     --screen
     for x = 1, 160 do
@@ -82,7 +81,78 @@ function love.draw()
 
     love.graphics.print("pc: 0x"..bit.tohex(system.cpu.registers.pc, 4))
 
-    imgui.Begin("Hex Editor")
+    imgui.Begin("Debug") -- MAIN DEBUG STUFF START
+    
+    imgui.Text("FPS: %d", love.timer.getFPS())
+    imgui.Text("PC: ")
+    imgui.SameLine()
+    imgui.SetNextItemWidth(36)
+    local pcbuf = ffi.new("char[5]")
+    ffi.copy(pcbuf, bit.tohex(system.cpu.registers.pc, 4))
+
+    if imgui.InputText(" ", pcbuf, 5, bit.bor(imgui.ImGuiInputTextFlags_CharsUppercase, imgui.ImGuiInputTextFlags_CharsHexadecimal, imgui.ImGuiInputTextFlags_EnterReturnsTrue)) then
+        system.cpu.registers.pc = tonumber(ffi.string(pcbuf, 4), 16)
+    end
+
+    --prepare for a mess 
+    imgui.Text("8-bit Registers\nA: %s\tB: %s\nC: %s\tD: %s\nE: %s\tF: %s\nH: %s\tL: %s", bit.tohex(system.cpu.registers.a, 2), bit.tohex(system.cpu.registers.b, 2), bit.tohex(system.cpu.registers.c, 2), bit.tohex(system.cpu.registers.d, 2), bit.tohex(system.cpu.registers.e, 2), bit.tohex(system.cpu.registers.f, 2), bit.tohex(system.cpu.registers.h, 2), bit.tohex(system.cpu.registers.l, 2))
+    imgui.Text("16-bit Registers\nAF: %s\tBC: %s\nDE: %s\tHL: %s", bit.tohex(system.cpu.registers:get_af(), 4), bit.tohex(system.cpu.registers:get_bc(), 4), bit.tohex(system.cpu.registers:get_de(), 4), bit.tohex(system.cpu.registers:get_hl(), 4))
+    imgui.Text("Current cycle counter: %s", tostring(system.cpu.cycles))
+    imgui.Text("CPU Msg: %s", system.cpu.message)
+
+    --update checkbox
+    local updBuf = ffi.new("bool[1]", {update})
+    imgui.Checkbox("Update", updBuf)
+    update = updBuf[0]
+
+    --tick the cpu
+    if imgui.Button("Tick 1x") then
+        system.cpu:tick()
+    end
+
+    imgui.SameLine()
+    if imgui.Button("10x") then
+        for i = 1, 10 do
+            system.cpu:tick()
+        end
+    end
+    imgui.SameLine()
+    if imgui.Button("100x") then
+        for i = 1, 100 do
+            system.cpu:tick()
+        end
+    end
+    imgui.SameLine()
+    if imgui.Button("1000x") then
+        for i = 1, 1000 do
+            system.cpu:tick()
+        end
+    end
+    imgui.SameLine()
+    if imgui.Button("10000x") then
+        for i = 1, 10000 do
+            system.cpu:tick()
+        end
+    end
+
+    if imgui.Button("PC++") then
+        system.cpu.registers.pc = system.cpu.registers.pc + 1
+    end
+
+    if imgui.Button("Reset") then --you have to click this twice for some reason
+        system:reset()
+    end
+
+    --bypass memory r/w restrictions toggle
+    local bypassBuf = ffi.new("bool[1]", {system.ram.bypass})
+    imgui.Checkbox("Bypass RAM W/P", bypassBuf)
+    system.ram.bypass = bypassBuf[0]
+
+    imgui.Text(last_print)
+
+    imgui.End() -- MAIN DEBUG STUFF END
+
+    imgui.Begin("Hex Editor") -- HEX EDITOR START
 
     imgui.PushStyleVar_Vec2(imgui.ImGuiStyleVar_ItemSpacing, imgui.ImVec2_Float(-10, 1)) -- set padding to make a grid
     imgui.PushStyleVar_Vec2(imgui.ImGuiStyleVar_FramePadding, imgui.ImVec2_Float(2, 2))

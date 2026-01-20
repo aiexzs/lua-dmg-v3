@@ -3,6 +3,8 @@ local opcodes = require("dmg.opcodes")
 
 local bor, bnot, band, bxor, lshift, rshift, tohex = bit.bor, bit.bnot, bit.band, bit.bxor, bit.lshift, bit.rshift, bit.tohex
 
+instructions[0x00] = function (cpu) cpu.cycles = cpu.cycles * 1 end
+
 --LD: Load instructions
 
 instructions[0x01] = function (cpu) cpu.registers:set_bc(cpu:read_u16_pc_up()) end
@@ -18,7 +20,7 @@ instructions[0x1a] = function (cpu) cpu.registers.a = cpu.ram[cpu.registers:get_
 instructions[0x1e] = function (cpu) cpu.registers.e = cpu:read_byte_pc_up() end
 instructions[0x21] = function (cpu) cpu.registers:set_hl(cpu:read_u16_pc_up()) end
 instructions[0x22] = function (cpu) cpu.ram[cpu.registers:get_hl()] = cpu.registers.a;cpu.registers:set_hl(cpu.registers:get_hl()+1) end
-instructions[0x23] = function (cpu) cpu.registers.h = cpu:read_byte_pc_up() end
+instructions[0x26] = function (cpu) cpu.registers.h = cpu:read_byte_pc_up() end
 instructions[0x2a] = function (cpu) cpu.registers.a = cpu.ram[cpu.registers:get_hl()];cpu.registers:set_hl(cpu.registers:get_hl()+1) end
 instructions[0x2e] = function (cpu) cpu.registers.l = cpu:read_byte_pc_up() end
 instructions[0x31] = function (cpu) cpu.registers.sp = cpu:read_u16_pc_up() end
@@ -120,14 +122,15 @@ local function setDecFlags(cpu, value)
 end
 
 local function addA(cpu, v) 
-    local result = cpu.registers.a + v
+    local a = cpu.registers.a
+    local result = (a + v)
+    local wrapped = band(result, 0b11111111)
 
-    cpu.registers:set_flag("hc", band(result, 0b100000000) ~= 0)
-
-    cpu.registers.a = result % 256
-
-    cpu.registers:set_flag("z", result == 0)
+    cpu.registers.a = wrapped
+    
+    cpu.registers:set_flag("z", wrapped == 0)
     cpu.registers:set_flag("n", false)
+    cpu.registers:set_flag("hc", (band(a, 0xF) + band(v, 0xF)) > 0xF)
 end
 
 local function subA(cpu, v)
@@ -155,15 +158,15 @@ instructions[0xe8] = function (cpu) cpu.registers.sp = cpu.registers.sp + cpu:re
 
 --ADC
 
-instructions[0x88] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.b + (cpu.registers:get_flag("z") and 1 or 0) end
-instructions[0x89] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.c + (cpu.registers:get_flag("z") and 1 or 0) end
-instructions[0x8a] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.d + (cpu.registers:get_flag("z") and 1 or 0) end
-instructions[0x8b] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.e + (cpu.registers:get_flag("z") and 1 or 0) end
-instructions[0x8c] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.h + (cpu.registers:get_flag("z") and 1 or 0) end
-instructions[0x8d] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.l + (cpu.registers:get_flag("z") and 1 or 0) end
-instructions[0x8e] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.ram[cpu.registers:get_hl()] + (cpu.registers:get_flag("z") and 1 or 0) end
-instructions[0x8f] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.a + (cpu.registers:get_flag("z") and 1 or 0) end
-instructions[0xce] = function (cpu) cpu.registers.a = cpu.registers.a + cpu:read_byte_pc_up() + (cpu.registers:get_flag("z") and 1 or 0) end
+instructions[0x88] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.b + (cpu.registers:get_flag("c") and 1 or 0) end
+instructions[0x89] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.c + (cpu.registers:get_flag("c") and 1 or 0) end
+instructions[0x8a] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.d + (cpu.registers:get_flag("c") and 1 or 0) end
+instructions[0x8b] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.e + (cpu.registers:get_flag("c") and 1 or 0) end
+instructions[0x8c] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.h + (cpu.registers:get_flag("c") and 1 or 0) end
+instructions[0x8d] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.l + (cpu.registers:get_flag("c") and 1 or 0) end
+instructions[0x8e] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.ram[cpu.registers:get_hl()] + (cpu.registers:get_flag("c") and 1 or 0) end
+instructions[0x8f] = function (cpu) cpu.registers.a = cpu.registers.a + cpu.registers.a + (cpu.registers:get_flag("c") and 1 or 0) end
+instructions[0xce] = function (cpu) cpu.registers.a = cpu.registers.a + cpu:read_byte_pc_up() + (cpu.registers:get_flag("c") and 1 or 0) end
 
 --SUB
 
@@ -191,20 +194,20 @@ instructions[0xde] = function (cpu) cpu.registers.a = cpu.registers.a - cpu:read
 
 --INC
 
-instructions[0x03] = function (cpu) cpu.registers:set_bc(cpu.registers:get_bc() + 1);setIncFlags(cpu, cpu.registers:get_bc()) end
+instructions[0x03] = function (cpu) cpu.registers:set_bc(cpu.registers:get_bc() + 1) end
 instructions[0x04] = function (cpu) cpu.registers.b = cpu.registers.b + 1;setIncFlags(cpu, cpu.registers.b) end
 instructions[0x0c] = function (cpu) cpu.registers.c = cpu.registers.c + 1;setIncFlags(cpu, cpu.registers.c) end
 
-instructions[0x13] = function (cpu) cpu.registers:set_de(cpu.registers:get_de() + 1);setIncFlags(cpu, cpu.registers:get_de()) end
+instructions[0x13] = function (cpu) cpu.registers:set_de(cpu.registers:get_de() + 1) end
 instructions[0x14] = function (cpu) cpu.registers.d = cpu.registers.d + 1;setIncFlags(cpu, cpu.registers.d) end
 instructions[0x1c] = function (cpu) cpu.registers.e = cpu.registers.e + 1;setIncFlags(cpu, cpu.registers.e) end
 
-instructions[0x23] = function (cpu) cpu.registers:set_hl(cpu.registers:get_hl() + 1);setIncFlags(cpu, cpu.registers:get_hl()) end
+instructions[0x23] = function (cpu) cpu.registers:set_hl(cpu.registers:get_hl() + 1) end
 instructions[0x24] = function (cpu) cpu.registers.h = cpu.registers.h + 1;setIncFlags(cpu, cpu.registers.h) end
 instructions[0x2c] = function (cpu) cpu.registers.l = cpu.registers.l + 1;setIncFlags(cpu, cpu.registers.l) end
 
 instructions[0x33] = function (cpu) cpu.registers.sp = cpu.registers.sp + 1;setIncFlags(cpu, cpu.registers.sp) end
-instructions[0x34] = function (cpu) cpu.ram[cpu.registers:get_hl()] = cpu.ram[cpu.registers:get_hl()] + 1;setIncFlags(cpu, cpu.ram[cpu.registers:get_hl()]) end
+instructions[0x34] = function (cpu) cpu.ram[cpu.registers:get_hl()] = cpu.ram[cpu.registers:get_hl()] + 1 end
 instructions[0x3c] = function (cpu) cpu.registers.a = cpu.registers.a + 1;setIncFlags(cpu, cpu.registers.a) end
 
 --DEC
@@ -257,9 +260,9 @@ end
 local function cpFlags(cpu, val1, val2) --val1 should always be reg a
     local result = val1 - val2
     cpu.registers:set_flag("z", result == 0)
-    cpu.registers:set_flag("n", false)
-    cpu.registers:set_flag("hc", false)
-    cpu.registers:set_flag("c", false)
+    cpu.registers:set_flag("n", true)
+    cpu.registers:set_flag("hc", bit.band(val1, 0b00001111) < bit.band(val2, 0b00001111))
+    cpu.registers:set_flag("c", val1 < val2) --if borrow occurs
     return result
 end
 
@@ -332,11 +335,11 @@ end
 
 --JP
 
-instructions[0xc2] = function (cpu) if not cpu.registers:get_flag("z") then cpu.registers.pc = cpu:read_byte_pc_up() end end --NZ
-instructions[0xc3] = function (cpu) cpu.registers.pc = cpu:read_byte_pc_up() end
-instructions[0xca] = function (cpu) if cpu.registers:get_flag("z") then cpu.registers.pc = cpu:read_byte_pc_up() end end --Z
-instructions[0xd2] = function (cpu) if not cpu.registers:get_flag("c") then cpu.registers.pc = cpu:read_byte_pc_up() end end --NC
-instructions[0xda] = function (cpu) if cpu.registers:get_flag("c") then cpu.registers.pc = cpu:read_byte_pc_up() end end --C
+instructions[0xc2] = function (cpu) if not cpu.registers:get_flag("z") then cpu.registers.pc = cpu:read_u16_pc_up() end end --NZ
+instructions[0xc3] = function (cpu) cpu.registers.pc = cpu:read_u16_pc_up() end
+instructions[0xca] = function (cpu) if cpu.registers:get_flag("z") then cpu.registers.pc = cpu:read_u16_pc_up() end end --Z
+instructions[0xd2] = function (cpu) if not cpu.registers:get_flag("c") then cpu.registers.pc = cpu:read_u16_pc_up() end end --NC
+instructions[0xda] = function (cpu) if cpu.registers:get_flag("c") then cpu.registers.pc = cpu:read_u16_pc_up() end end --C
 instructions[0xe9] = function (cpu) cpu.registers.pc = cpu.registers:get_hl() end
 
 --JR
@@ -404,6 +407,58 @@ instructions[0x17] = function (cpu) cpu.registers.a = rl_c(cpu, cpu.registers.a)
 ]]
 
 local prefixed = {}
+
+local function rlc(cpu, value)
+    local bit7 = bit.rshift(value, 7)
+    cpu.registers:set_flag("c", bit7 == 1)
+    
+    value = bit.lshift(value, 1)
+    value = bit.bor(value, bit7) -- union old bit 7 to copy it to new bit 0
+    value = bit.band(value, 0b11111111) -- keep it within 8 bits
+
+    cpu.registers:set_flag("z", value == 0)
+    cpu.registers:set_flag("n", false)
+    cpu.registers:set_flag("hc", false)
+
+    return value
+end
+
+local function rrc(cpu, value)
+    local bit0 = bit.band(value, 0b00000001)
+    cpu.registers:set_flag("c", bit0 == 1)
+    
+    value = bit.rshift(value, 1)
+    value = bit.bor(value, lshift(bit0, 7)) -- union old bit 0 to copy it to new bit 7
+    value = bit.band(value, 0b11111111) -- keep it within 8 bits
+
+    cpu.registers:set_flag("z", value == 0)
+    cpu.registers:set_flag("n", false)
+    cpu.registers:set_flag("hc", false)
+
+    return value
+end
+
+--RLC r
+
+prefixed[0x00] = function (cpu) cpu.registers.b = rlc(cpu, cpu.registers.b) end
+prefixed[0x01] = function (cpu) cpu.registers.c = rlc(cpu, cpu.registers.c) end
+prefixed[0x02] = function (cpu) cpu.registers.d = rlc(cpu, cpu.registers.d) end
+prefixed[0x03] = function (cpu) cpu.registers.e = rlc(cpu, cpu.registers.e) end
+prefixed[0x04] = function (cpu) cpu.registers.h = rlc(cpu, cpu.registers.h) end
+prefixed[0x05] = function (cpu) cpu.registers.l = rlc(cpu, cpu.registers.l) end
+prefixed[0x06] = function (cpu) cpu:set_hl(rlc(cpu, cpu:get_hl())) end
+prefixed[0x07] = function (cpu) cpu.registers.a = rlc(cpu, cpu.registers.a) end
+
+--RRC r
+
+prefixed[0x08] = function (cpu) cpu.registers.b = rrc(cpu, cpu.registers.b) end
+prefixed[0x09] = function (cpu) cpu.registers.c = rrc(cpu, cpu.registers.c) end
+prefixed[0x0a] = function (cpu) cpu.registers.d = rrc(cpu, cpu.registers.d) end
+prefixed[0x0b] = function (cpu) cpu.registers.e = rrc(cpu, cpu.registers.e) end
+prefixed[0x0c] = function (cpu) cpu.registers.h = rrc(cpu, cpu.registers.h) end
+prefixed[0x0d] = function (cpu) cpu.registers.l = rrc(cpu, cpu.registers.l) end
+prefixed[0x0e] = function (cpu) cpu:set_hl(rrc(cpu, cpu:get_hl())) end
+prefixed[0x0f] = function (cpu) cpu.registers.a = rrc(cpu, cpu.registers.a) end
 
 prefixed[0x10] = function (cpu) cpu.registers.b = rl_c(cpu, cpu.registers.b) end
 prefixed[0x11] = function (cpu) cpu.registers.c = rl_c(cpu, cpu.registers.c) end
