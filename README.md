@@ -8,7 +8,7 @@ todo:
 - [x] create system structure
 - [x] basic (aka poor) implementations of required parts of system
 - [x] the boot logo scrolls!!!!
-- [ ] add non-placebo nonsense timing
+- [ ] add real timing and interrupts
 - [ ] implement correct PPU structure
 - [ ] pass a benchmark
 - [ ] quirky stuff
