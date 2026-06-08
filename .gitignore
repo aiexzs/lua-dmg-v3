@@ -1,0 +1,6 @@
+*.old
+.vscode/
+.github/
+*.gb
+test-roms/
+*.bin

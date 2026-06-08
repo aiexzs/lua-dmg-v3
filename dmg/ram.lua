@@ -9,7 +9,7 @@ local fileStub = {
     seek = function(a,b) end
 }
 
-function ramMod.init(bootrom, rom)
+function ramMod.init(bootrom, rom, system)
     rom = rom and rom or fileStub
     local ram = {}
     ram.mem = {}

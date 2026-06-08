@@ -15,7 +15,7 @@ local last_print = ""
 _G.print = function(str) last_print = tostring(str) end 
 
 local system
-local bootrom = love.filesystem.newFile("dmg_boot.bin", "r")
+local bootrom = love.filesystem.newFile("bootrom-intact.bin", "r")
 local rom = love.filesystem.newFile("Tetris.gb", "r")
 local imgui = require("cimgui")
 
@@ -24,7 +24,7 @@ function love.load()
     love.graphics.setPointSize(3)
 
     local pixelScale = love.window.getDPIScale()
-    love.window.setMode(800*2, 600*2)
+    love.window.setMode(1000, 800)
 
     imgui.love.Init()
     
@@ -39,7 +39,7 @@ local ppuClocks = 0
 local clock = 1
 local update = true
 function love.update(dt)
-    clock = (4100000 * (1/60))/4
+    clock = (4194304 * (dt))/8
     if update then
         for i = 1, clock do
             if cpuClocks < 4 then
@@ -73,7 +73,7 @@ function love.draw()
         for y = 1, 144 do
             local pixel = system.ppu.screen[x][y] or 0
             local shade = ((3-pixel)/3)/1.5
-            love.graphics.setColor(shade,shade*1.25,shade)
+            love.graphics.setColor(shade*1.1,shade*1.25,shade*0.9)
             love.graphics.points((x*3)+100, (y*3)+100)
         end
     end
@@ -83,7 +83,7 @@ function love.draw()
 
     imgui.Begin("Debug") -- MAIN DEBUG STUFF START
     
-    imgui.Text("FPS: %d", love.timer.getFPS())
+    imgui.Text("FPS: %s", tostring(love.timer.getFPS()))
     imgui.Text("PC: ")
     imgui.SameLine()
     imgui.SetNextItemWidth(36)
@@ -98,12 +98,17 @@ function love.draw()
     imgui.Text("8-bit Registers\nA: %s\tB: %s\nC: %s\tD: %s\nE: %s\tF: %s\nH: %s\tL: %s", bit.tohex(system.cpu.registers.a, 2), bit.tohex(system.cpu.registers.b, 2), bit.tohex(system.cpu.registers.c, 2), bit.tohex(system.cpu.registers.d, 2), bit.tohex(system.cpu.registers.e, 2), bit.tohex(system.cpu.registers.f, 2), bit.tohex(system.cpu.registers.h, 2), bit.tohex(system.cpu.registers.l, 2))
     imgui.Text("16-bit Registers\nAF: %s\tBC: %s\nDE: %s\tHL: %s", bit.tohex(system.cpu.registers:get_af(), 4), bit.tohex(system.cpu.registers:get_bc(), 4), bit.tohex(system.cpu.registers:get_de(), 4), bit.tohex(system.cpu.registers:get_hl(), 4))
     imgui.Text("Current cycle counter: %s", tostring(system.cpu.cycles))
+    imgui.Text("PPU Info: scy %s, scx %s", bit.tohex(system.ppu.scy, 2), bit.tohex(system.ppu.scx, 2))
     imgui.Text("CPU Msg: %s", system.cpu.message)
 
     --update checkbox
     local updBuf = ffi.new("bool[1]", {update})
+    local haltedBuf = ffi.new("bool[1]", {not system.cpu.update})
     imgui.Checkbox("Update", updBuf)
+    imgui.SameLine()
+    imgui.Checkbox("Halted", haltedBuf)
     update = updBuf[0]
+    system.cpu.update = not haltedBuf[0]
 
     --tick the cpu
     if imgui.Button("Tick 1x") then
