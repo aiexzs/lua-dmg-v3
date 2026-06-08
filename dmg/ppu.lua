@@ -1,3 +1,5 @@
+--TODO this entire thing needs to be rewritten so its not dogshit. i don't even remember writing this and all of the comments were added after i deciphered it months later
+
 local ppu = {}
 
 local bor, band, bxor, lshift, rshift, tohex = bit.bor, bit.band, bit.bxor, bit.lshift, bit.rshift, bit.tohex
@@ -136,23 +138,20 @@ function ppu.renderTileToBackground(self, id, x, y)
     end
 end
 
-function ppu.scanline(self, bg) --background only, for now anyway
-    local wx = 0 + self.scx                --todo: set up scx reg
-    local wy = self.line + self.scy
+function ppu.scanline(self, bg)
+    local y = band(self.line + self.scy, 0xFF)
 
-    for i = 1, 20 do
-        for f = 1, 8 do
-            local screenx = f + (8 * (i - 1)) + wx --???
-            self.screen[screenx%160+1][self.line] = bg[screenx%255+1][wy]
-        end
+    for x = 0, 159 do
+        local bgx = band(x + self.scx, 0xFF)
+        self.screen[x + 1][self.line] = bg[bgx + 1][y + 1]
     end
 end
 
 function ppu.tick(self)
     if self.line <= 144 then
         --get background map
-        for x = 1, 20 do
-            local y = math.fmod(math.floor((self.line+self.scy)/8), 18)+1
+        for x = 1, 21 do
+            local y = math.fmod(math.floor((self.line+self.scy)/8), 20)+1
             local tile = self:getBackgroundTile(1, y + (32 * (x - 1)))
             if self.backgroundmap[x][y] ~= tile then
                 self.backgroundmap[x][y] = tile

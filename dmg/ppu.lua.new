@@ -1,0 +1,30 @@
+--new ppu started 2/18/2026
+
+local ppu = {}
+
+function ppu.init(self, ram)
+    self.ram = ram
+    self.registers = {
+        scx = 0, --scroll x
+        scy = 0, --scroll y
+        line = 0, --current scanline
+        lcdc = 0x00, --LCD control
+    }
+
+    self.screen = {}
+    for x = 1, 160 do
+        self.screen[x] = {}
+        for y = 1, 144 do
+            self.screen[x][y] = 0 --0,1,2,3 for the background shades (0b00, 0b01, 0b10, 0b11)
+        end
+    end
+
+    return ppu
+end
+
+function ppu.tick(self, system)
+    local a = 1+1
+    --lalalala
+end
+
+return ppu

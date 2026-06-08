@@ -82,15 +82,13 @@ cpu.registers = {
 
     set_af = function(self, value)
         value = value % 65536
-        local right_byte = rshift(value,8)
-        local left_byte = band(value, 0xff)
 
-        self.a = right_byte
-        self.f = left_byte
+        self.a = rshift(value, 8)
+        self.f = band(value, 0xF0)  -- lower 4 bits must always be 0
     end,
 
     get_af = function(self)
-        return bor(lshift(self.f,8), self.a)
+        return bor(lshift(self.a, 8), self.f)
     end,
 
     set_bc = function(self, value)
@@ -143,8 +141,10 @@ function cpu.init(system)
     end
     print(missing_instrs)
     cpu.ram = system.ram
-    cpu.cycles = 0
+    cpu.tcycles = 0
+    cpu.state = 0 -- 0 is to fetch the next instruction, 1 is to keep running the current instruction
     cpu.message = ""
+    cpu.update = true
     return cpu
 end
 
@@ -225,19 +225,21 @@ function cpu.execute_next(self)
     --print("0x"..tohex(self.registers:get_register("pc")-1, 4)..": "..tohex(opcode,2))
     if instructions[opcode] then
         local opcodestr = "0x"..tohex(opcode, 2)
-        print('executing: '..tohex(opcode,2):upper().." @ 0x"..tohex(self.registers.pc, 4).." | "..labels[opcodestr].mnemonic.." "..(labels[opcodestr].operand1 or "")..", "..(labels[opcodestr].operand2 or ""))
+        --print('executing: '..tohex(opcode,2):upper().." @ 0x"..tohex(self.registers.pc, 4).." | "..labels[opcodestr].mnemonic.." "..(labels[opcodestr].operand1 or "")..", "..(labels[opcodestr].operand2 or ""))
         instructions[opcode](self)
+        --print(tohex(self.registers:get_af(), 4))
+        --self.cycles = labels[opcodestr].cycles[1] -- not great practice but whatever
     else
         print(colors('%{redbg}error: cannot find instruction '..tohex(opcode,2):upper().." at 0x"..tohex(self.registers.pc, 4)))
     end
 end
 
 function cpu.tick(self)
-    if self.cycles == 0 then
+    if self.tcycles <= 0 and self.update then
         self:execute_next()
-        self.cycles = 4
+        --self.cycles = 4
     else
-        self.cycles = self.cycles - 1
+        self.tcycles = self.tcycles - 1
     end
 
     if self.registers.pc == 0x100 then --check if bootrom is finished

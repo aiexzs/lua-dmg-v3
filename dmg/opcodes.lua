@@ -2011,6 +2011,16 @@ return {
         operand1 = "NC",
         operand2 = "a16"
       },
+      ["0xd3"] = {
+        mnemonic = "SPECIAL",
+        length = 3,
+        cycles = { 16, 12 },
+        flags = { "-", "-", "-", "-" },
+        addr = "0xd3",
+        group = "",
+        operand1 = "",
+        operand2 = ""
+      },
       ["0xd4"] = {
         mnemonic = "CALL",
         length = 3,
