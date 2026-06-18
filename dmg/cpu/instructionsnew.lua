@@ -7,7 +7,7 @@ for i = 0, 0xff do
     end
 end
 
-local function mcycle(cpu, mult)
+local function mcycle(cpu, mult) --this is essentially a placeholder while i work on cpu
     mult = mult or 1
     cpu.tcycles = cpu.tcycles + (4 * mult)
 end
@@ -419,11 +419,103 @@ end
 
 --Arithmetic instructions
 
-function ADD_A(cpu, value)
+function ADD_A(cpu, value) --                 ADD A
     local result = cpu.registers.a + value
-    cpu.registers:
+    local result_clamped = band(result, 0xFF)
+
+    local carry = (result > result_clamped) and 1 or 0
+    local half_carry = ((band(result, 0xF) + band(result, 0xF)) > 0xF) and 1 or 0 -- check if bits are moved from the lower nibble to the upper nibble
+    cpu.registers:set_flag("c", carry)
+    cpu.registers:set_flag("hc", half_carry)
+    cpu.registers:set_flag("z", result_clamped % 2) -- result % 2 returns 0 if < 1
+
+    cpu.registers.a = result_clamped
 end
 
 instructions[0x80] = function (cpu)
+    ADD_A(cpu, cpu.instructions.b)
+end
+
+instructions[0x81] = function (cpu)
+    ADD_A(cpu, cpu.instructions.c)
+end
+
+instructions[0x82] = function (cpu)
+    ADD_A(cpu, cpu.instructions.d)
+end
+
+instructions[0x83] = function (cpu)
+    ADD_A(cpu, cpu.instructions.e)
+end
+
+instructions[0x84] = function (cpu)
+    ADD_A(cpu, cpu.instructions.h)
+end
+
+instructions[0x85] = function (cpu)
+    ADD_A(cpu, cpu.instructions.l)
+end
+
+instructions[0x86] = function (cpu)
+    local loc = cpu.registers:get_hl()
+    local val = read_memory(cpu, loc)
+    ADD_A(cpu, val)
+end
+
+instructions[0x87] = function (cpu)
+    ADD_A(cpu, cpu.instructions.a)
+end
+
+instructions[0xC6] = function (cpu)
+    local val = cpu:read_byte_pc_up()
+    mcycle(cpu)
+    ADD_A(cpu, val)
+end
+
+function ADC_A(cpu, value) --                 ADC A
+    ADD_A(cpu, value + cpu.registers:get_flag("c")) -- all we're doing that is different is adding the carry bit
+end
+
+instructions[0x88] = function (cpu)
+    ADC_A(cpu, cpu.instructions.b)
+end
+
+instructions[0x89] = function (cpu)
+    ADC_A(cpu, cpu.instructions.c)
+end
+
+instructions[0x8A] = function (cpu)
+    ADC_A(cpu, cpu.instructions.d)
+end
+
+instructions[0x8B] = function (cpu)
+    ADC_A(cpu, cpu.instructions.e)
+end
+
+instructions[0x8C] = function (cpu)
+    ADC_A(cpu, cpu.instructions.h)
+end
+
+instructions[0x8D] = function (cpu)
+    ADC_A(cpu, cpu.instructions.l)
+end
+
+instructions[0x8E] = function (cpu)
+    local loc = cpu.registers:get_hl()
+    local val = read_memory(cpu, loc)
+    ADC_A(cpu, val)
+end
+
+instructions[0x8F] = function (cpu)
+    ADC_A(cpu, cpu.instructions.a)
+end
+
+instructions[0xCE] = function (cpu)
+    local val = cpu:read_byte_pc_up()
+    mcycle(cpu)
+    ADC_A(cpu, val)
+end
+
+function SUB_A(cpu, value)
     
 end
