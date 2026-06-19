@@ -34,28 +34,19 @@ local function clamp(x, min, max)
     if x < min then return min elseif x > max then return max else return x end
 end
 
-local cpuClocks = 0
-local ppuClocks = 0
-local clock = 1
-local update = true
+
+local CPU_FREQ = 4194304 -- Hz (T-cycles)
+local MCYCLES_PER_SEC = CPU_FREQ / 4
+local MCYCLE_TIME = 1 / MCYCLES_PER_SEC
+local update = false
+local accumulator = 0
+
 function love.update(dt)
-    clock = (4194304 * (dt))/8
     if update then
-        for i = 1, clock do
-            if cpuClocks < 4 then
-                system.cpu:tick()
-                cpuClocks = cpuClocks + 1
-            end
+        accumulator = accumulator + dt
 
-            if ppuClocks < 1 then
-                system.ppu:tick()
-                ppuClocks = ppuClocks + 1
-            end
-
-            if cpuClocks == 4 and ppuClocks == 1 then
-                cpuClocks = 0
-                ppuClocks = 0
-            end
+        while accumulator >= MCYCLE_TIME do
+            system:step_mcycle() -- main step logic
         end
     end
 

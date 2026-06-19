@@ -140,11 +140,13 @@ function cpu.init(system)
         end
     end
     print(missing_instrs)
+
+    cpu.system = system
     cpu.ram = system.ram
-    cpu.tcycles = 0
     cpu.state = 0 -- 0 is to fetch the next instruction, 1 is to keep running the current instruction
     cpu.message = ""
     cpu.update = true
+    cpu.current_opcode = 0
     return cpu
 end
 
@@ -160,8 +162,7 @@ end
 function cpu.read_byte_pc_up(self)
     local pc = self.registers:get_register("pc")
     local byte = self.ram[pc]
-    pc = pc + 1
-    self.registers:set_register("pc", pc)
+    self.registers:set_register("pc", pc + 1)
 
     return byte
 end
@@ -209,41 +210,27 @@ function cpu.read_u16_pc(self)
     return bor(lshift(upper, 8), lower)
 end
 
-function cpu.get_next_opcode(self)
-    local pc = self.registers:get_register("pc")
-    local byte = self.ram[pc]
-    self.registers:set_register("pc", pc+1)
+function cpu.fetch(self)
+    local byte = self:read_byte_pc_up()
 
     return byte
 end
 
---(!) cpu tick function
-
 local labels = require("dmg.opcodes").unprefixed
-function cpu.execute_next(self)
-    local opcode = self:get_next_opcode()
-    --print("0x"..tohex(self.registers:get_register("pc")-1, 4)..": "..tohex(opcode,2))
+
+function cpu.execute_next(self, opcode)
     if instructions[opcode] then
-        local opcodestr = "0x"..tohex(opcode, 2)
-        --print('executing: '..tohex(opcode,2):upper().." @ 0x"..tohex(self.registers.pc, 4).." | "..labels[opcodestr].mnemonic.." "..(labels[opcodestr].operand1 or "")..", "..(labels[opcodestr].operand2 or ""))
         instructions[opcode](self)
-        --print(tohex(self.registers:get_af(), 4))
-        --self.cycles = labels[opcodestr].cycles[1] -- not great practice but whatever
     else
         print(colors('%{redbg}error: cannot find instruction '..tohex(opcode,2):upper().." at 0x"..tohex(self.registers.pc, 4)))
     end
 end
 
-function cpu.tick(self)
-    if self.tcycles <= 0 and self.update then
-        self:execute_next()
-        --self.cycles = 4
+function cpu.step(self)
+    if self.system.cycle == 0 then -- first cycle is always 'fetch' for CPU
+        self.current_opcode = self:fetch()
     else
-        self.tcycles = self.tcycles - 1
-    end
-
-    if self.registers.pc == 0x100 then --check if bootrom is finished
-        self.ram:entry()
+        self:execute_next(self.current_opcode)
     end
 end
 

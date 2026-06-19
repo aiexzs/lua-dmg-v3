@@ -147,7 +147,7 @@ function ppu.scanline(self, bg)
     end
 end
 
-function ppu.tick(self)
+function ppu.step(self)
     if self.line <= 144 then
         --get background map
         for x = 1, 21 do
