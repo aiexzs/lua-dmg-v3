@@ -12,7 +12,7 @@ end
 
 --Special instructions
 
-instructions[0x00] = function(cpu) cpu.cycles = cpu.tcycles * 1 end --NOP
+instructions[0x00] = function(cpu)  end --NOP
 instructions[0x76] = function(cpu) cpu.update = false end          --HALT
 instructions[0xf3] = function(cpu) end                             --DI TODO impl
 instructions[0xd3] = function(cpu) print("---------MARKER---------") end -- special instruction

@@ -24,7 +24,7 @@ function love.load()
     love.graphics.setPointSize(3)
 
     local pixelScale = love.window.getDPIScale()
-    love.window.setMode(1000, 800)
+    love.window.setMode(1000, 800, {resizable = true})
 
     imgui.love.Init()
     
@@ -101,33 +101,33 @@ function love.draw()
     update = updBuf[0]
     system.cpu.update = not haltedBuf[0]
 
-    --tick the cpu
-    if imgui.Button("Tick 1x") then
-        system.cpu:tick()
+    --Step the cpu
+    if imgui.Button("Step 1x") then
+        system:step_mcycle()
     end
 
     imgui.SameLine()
     if imgui.Button("10x") then
         for i = 1, 10 do
-            system.cpu:tick()
+            system:step_mcycle()
         end
     end
     imgui.SameLine()
     if imgui.Button("100x") then
         for i = 1, 100 do
-            system.cpu:tick()
+            system:step_mcycle()
         end
     end
     imgui.SameLine()
     if imgui.Button("1000x") then
         for i = 1, 1000 do
-            system.cpu:tick()
+            system:step_mcycle()
         end
     end
     imgui.SameLine()
     if imgui.Button("10000x") then
         for i = 1, 10000 do
-            system.cpu:tick()
+            system:step_mcycle()
         end
     end
 
