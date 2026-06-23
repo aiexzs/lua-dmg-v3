@@ -143,10 +143,14 @@ function cpu.init(system)
 
     cpu.system = system
     cpu.ram = system.ram
-    cpu.state = 0 -- 0 is to fetch the next instruction, 1 is to keep running the current instruction
+    cpu.state = 0 -- 0 is to fetch the next instruction, >=1 is to keep running the current instruction
     cpu.message = ""
     cpu.update = true
-    cpu.current_opcode = 0
+    cpu.current = {
+        opcode = 0,
+        state = 0,
+        temp = nil
+    }
     return cpu
 end
 
@@ -227,11 +231,16 @@ function cpu.execute_next(self, opcode)
 end
 
 function cpu.step(self)
-    if self.system.cycle == 0 then -- first cycle is always 'fetch' for CPU
-        self.current_opcode = self:fetch()
+    if self.current.cycle == 0 then -- first cycle is always 'fetch' for CPU
+        self.current.opcode = self:fetch()
     else
-        self:execute_next(self.current_opcode)
+        if self:execute_next(self.current.opcode) then
+            self.current.cycle = 0
+            return
+        end
     end
+
+    self.current.cycle = self.current.cycle + 1
 end
 
 return cpu
