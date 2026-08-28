@@ -13,7 +13,7 @@ local registers = {
     pc = 0x0000, --setting to -1 is just so that it starts at the first byte after it increments PC 
     sp = 0x0000,
 
-    set_register = function(self, register, value)
+    set_register = function(self, register, value) -- TODO: fix this nonsense (and maybe wrap all of the register setting into one function? we'll see)
         if self[register] then
             if register ~= "sp" and register ~= "pc" then
                 self[register] = value % 256
@@ -32,7 +32,12 @@ local registers = {
 
     set_flag = function(self, flag, value) -- Z bit 7, N (subtract) bit 6, HC bit 5, C bit 4
         --print(flag.." is now "..tostring(value))
-        value = value and 1 or 0
+        assert(((type(value) == "boolean") or (type(value) == "number")), "someting went terribly wrong (set_flag("..flag..", "..tostring(value).."))")
+        if type(value) == "boolean" then -- whatever you pass should work if you arent doing something terrible (hopefully)
+            value = value and 1 or 0
+        elseif value > 1 then
+            value = 1
+        end
         
         local mask
         if flag == "z" then

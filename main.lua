@@ -12,7 +12,7 @@ _G.colors = require("ansicolors") --thx
 --_G.print = function() end
 
 local last_print = ""
-_G.print = function(str) last_print = tostring(str) end 
+--_G.print = function(str) last_print = tostring(str) end 
 
 local system
 local bootrom = love.filesystem.newFile("bootrom-intact.bin", "r")
@@ -88,7 +88,7 @@ function love.draw()
     --prepare for a mess 
     imgui.Text("8-bit Registers\nA: %s\tB: %s\nC: %s\tD: %s\nE: %s\tF: %s\nH: %s\tL: %s", bit.tohex(system.cpu.registers.a, 2), bit.tohex(system.cpu.registers.b, 2), bit.tohex(system.cpu.registers.c, 2), bit.tohex(system.cpu.registers.d, 2), bit.tohex(system.cpu.registers.e, 2), bit.tohex(system.cpu.registers.f, 2), bit.tohex(system.cpu.registers.h, 2), bit.tohex(system.cpu.registers.l, 2))
     imgui.Text("16-bit Registers\nAF: %s\tBC: %s\nDE: %s\tHL: %s", bit.tohex(system.cpu.registers:get_af(), 4), bit.tohex(system.cpu.registers:get_bc(), 4), bit.tohex(system.cpu.registers:get_de(), 4), bit.tohex(system.cpu.registers:get_hl(), 4))
-    imgui.Text("Current cycle counter: %s", tostring(system.cpu.cycles))
+    imgui.Text("Current cycle counter: %s", tostring(system.cpu.current.cycle))
     imgui.Text("PPU Info: scy %s, scx %s", bit.tohex(system.ppu.scy, 2), bit.tohex(system.ppu.scx, 2))
     imgui.Text("CPU Msg: %s", system.cpu.message)
 
