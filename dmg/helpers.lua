@@ -3,7 +3,11 @@ local helpers = {}
 local bor, bnot, band, bxor, lshift, rshift, tohex = bit.bor, bit.bnot, bit.band, bit.bxor, bit.lshift, bit.rshift, bit.tohex
 
 function helpers.msb(v)
-    return lshift(v, 8)
+    return rshift(v, 8)
+end
+
+function helpers.lsb(v)
+    return band(0xff)
 end
 
 function helpers.check_bit(v, n)

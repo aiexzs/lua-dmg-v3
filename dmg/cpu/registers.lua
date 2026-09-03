@@ -130,6 +130,14 @@ local registers = {
     get_hl = function(self)
         return bor(lshift(self.h,8), self.l)
     end,
+
+    set_sp = function(self, value) -- ditto
+        self.sp = value
+    end,
+
+    get_sp = function(self, value)
+        return self.sp
+    end
 }
 
 return registers

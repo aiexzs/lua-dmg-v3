@@ -10,6 +10,14 @@ for i = 0, 0xff do
     end
 end
 
+function instructions.execute(cpu, opcode)
+    --print("Executing 0x"..bit.tohex(opcode, 2))
+    if cpu.current.cycle == 4 then
+        instructions[opcode](cpu)
+        return true
+    end
+end
+
 --Special instructions
 
 instructions[0x00] = function(cpu)  end --NOP

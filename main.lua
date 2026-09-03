@@ -12,7 +12,7 @@ _G.colors = require("ansicolors") --thx
 --_G.print = function() end
 
 local last_print = ""
---_G.print = function(str) last_print = tostring(str) end 
+_G.print = function(str) last_print = tostring(str) end 
 
 local system
 local bootrom = love.filesystem.newFile("bootrom-intact.bin", "r")
@@ -41,12 +41,15 @@ local MCYCLE_TIME = 1 / MCYCLES_PER_SEC
 local update = false
 local accumulator = 0
 
+print("mcycle time: "..tostring(MCYCLE_TIME))
+
 function love.update(dt)
     if update then
         accumulator = accumulator + dt
 
         while accumulator >= MCYCLE_TIME do
             system:step_mcycle() -- main step logic
+            accumulator = accumulator - MCYCLE_TIME
         end
     end
 
@@ -62,7 +65,7 @@ function love.draw()
     --screen
     for x = 1, 160 do
         for y = 1, 144 do
-            local pixel = system.ppu.screen[x][y] or 0
+            local pixel = system.ppu.screen[x][y] 
             local shade = ((3-pixel)/3)/1.5
             love.graphics.setColor(shade*1.1,shade*1.25,shade*0.9)
             love.graphics.points((x*3)+100, (y*3)+100)

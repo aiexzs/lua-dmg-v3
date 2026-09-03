@@ -1,6 +1,6 @@
 local cpu = {}
 require("bit")
-local instructions = require("dmg.cpu.instructionsnew")
+local instructions = require("dmg.cpu.instructions")
 
 local bor, bnot, band, bxor, lshift, rshift, tohex = bit.bor, bit.bnot, bit.band, bit.bxor, bit.lshift, bit.rshift, bit.tohex
 
@@ -21,10 +21,11 @@ function cpu.init(system)
     cpu.message = ""
     cpu.update = true
     cpu.current = {
-        opcode = 0, -- we can just call it again instead of reading memory
-        cycle = 0, -- 0 is to fetch the next instruction, >=1 is to keep running the current instruction
+        opcode = 0, -- we can just call it again instead of reading memory (essentially IR register)
+        cycle = 0, -- in M-cycles, T-cycle accuracy is not implemented (not needed?)
         temp = 0 -- any persistent data we might need
     }
+    cpu.halt = false
     return cpu
 end
 
@@ -88,15 +89,9 @@ function cpu.read_u16_pc(self)
     return bor(lshift(upper, 8), lower)
 end
 
-function cpu.fetch(self) -- redundant? whatever
-    local byte = self:read_byte_pc_up()
-
-    return byte
-end
-
 local labels = require("dmg.opcodes").unprefixed
 
-function cpu.execute_next(self, opcode)
+function cpu.execute(self, opcode)
     if instructions[opcode] then
         return instructions.execute(self, opcode)
     else
@@ -104,22 +99,23 @@ function cpu.execute_next(self, opcode)
     end
 end
 
+function cpu.fetch(self)
+    self.current.cycle = 1 -- i know they technically overlap, but gekkio docs show "Mx/M1" (x being # of cycles)
+    local byte = self:read_byte_pc_up()
+
+    return byte
+end
+
 function cpu.step(self)
-    if self.current.cycle == 0 then -- first cycle (0 in this case) is always 'fetch' for CPU
-        print('fetching')
-        self.current.opcode = self:fetch()
-    else
-        local status = self:execute_next(self.current.opcode)
-        print(status)
-        if status then -- when the instruction returns true, we know we are done
-            self.current.cycle = 0
-            print("next instruction")
-            return
+    if not self.halt then
+        self.current.cycle = self.current.cycle + 1
+
+        local status = self:execute(self.current.opcode) -- returns false when instruction has not completed
+
+        if status then
+            cpu:fetch()
         end
     end
-
-    self.current.cycle = self.current.cycle + 1 -- if instruction doesn't return true, it's not over yet!
-    print("continuing")
 end
 
 return cpu
